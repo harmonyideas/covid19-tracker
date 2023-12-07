@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A Leaflet map!</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.6.0/dist/leaflet.css">
+    <link rel="stylesheet" href="http://cdn.datatables.net/1.10.20/css/jquery.dataTables.min.css">
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+    <link rel="stylesheet" href="map.css">
+    <script src="https://unpkg.com/leaflet@1.6.0/dist/leaflet.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+    <script src="http://cdn.datatables.net/1.10.20/js/jquery.dataTables.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js" integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6" crossorigin="anonymous"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="row">
+            <div class="col-sm">
+                <p>&nbsp;</p>
+                <br />
+            </div>
+        </div>
+    </div>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col">
+                <div class="card text-center mb-3 blue">
+                    <div class="card-header card-header-o" id="selectlayer">
+                        <h5>Select a location</h5>
+                    </div>
+                </div>
+                <div class="card text-center mb-3 blue">
+                    <div class="card-header card-header-o">
+                        <h5>NJ County Data</h5>
+                    </div>
+                    <div class="card-body mb-3" id="countytable">
+                        <table id="datatable1" class="display compact">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Population</th>
+                                    <th>Pop. Density</th>
+                                    <th>Covid19 Cases</th>
+                                    <th>Covid19 Deaths</th>
+                                </tr>
+                            </thead>
+                            <tfoot>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Population</th>
+                                    <th>Pop. Density</th>
+                                    <th>Covid19 Cases</th>
+                                    <th>Covid19 Deaths</th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-5">
+                <div class="card text-center mb-3 blue">
+                    <div class="card-header card-header-o" id="map"></div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card text-center mb-3 blue">
+                    <div class="card-header card-header-o">
+                        <h5>County Name</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="infoName"></div>
+                    </div>
+                </div>
+
+                <div class="card text-center mb-3 blue">
+                    <div class="card-header card-header-o">
+                        <h5>County Population</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="infoPopulation"></div>
+                    </div>
+                </div>
+                <div class="card text-center mb-3 blue">
+                    <div class="card-header card-header-o">
+                        <h5>County Pop. Density</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="infoPopDensity"></div>
+                    </div>
+                </div>
+                <div class="card text-center mb-3 orange">
+                    <div class="card-header card-header-o">
+                        <h5>County Covid-19 Cases</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="infoCovid19Cases"></div>
+                    </div>
+                </div>
+                <div class="card text-center mb-3 red">
+                    <div class="card-header card-header-o">
+                        <h5>County Covid-19 Deaths</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="infoCovid19Deaths"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="map-nj.js"></script>
+</body>
+
+</html>
