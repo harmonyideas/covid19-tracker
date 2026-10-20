@@ -18,7 +18,9 @@ var map = L.map('map', {
 //});
 
 // load a tile layer
-L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw', {
+// Set your own Mapbox public token here. Do not commit a real token.
+const MAPBOX_TOKEN = 'YOUR_MAPBOX_TOKEN';
+L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=' + MAPBOX_TOKEN, {
     minZoom: 4,
     maxZoom: 8,
     attribution: 'Map data © <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, ' +
@@ -72,14 +74,14 @@ function buildDataTable(data) {
     });
     $('#datatable1 tbody').on('click', 'tr', function() {
         var rowdata = table.row(this).data();
-        layerSelect(rowdata.properties.COUNTY_STATE_NAME);
+        layerSelect(rowdata.properties.GEOID);
     });
 };
 
 
 function buildLegend() {
     var legendinfo_div = document.getElementById("legendinfo");
-    var grades = [0, 50, 100, 200, 300, 400, 500];
+    var grades = [0, 1000, 5000, 10000, 25000, 50000, 100000, 250000, 500000];
     var labels = ['<strong>Confirmed COVID-19 Cases</strong>'];
     var from;
     var to;
@@ -101,16 +103,23 @@ function buildLegend() {
     legendinfo_div.innerHTML = labels.join('<br>');
 }
 
-// get color depending on population density value
-function getColor(d) {
-    return d > 1000 ? '#800026' :
-        d > 500 ? '#BD0026' :
-        d > 400 ? '#E31A1C' :
-        d > 300 ? '#FC4E2A' :
-        d > 200 ? '#FD8D3C' :
-        d > 100 ? '#FEB24C' :
-        d > 0 ? '#FED976' :
-        '#FFEDA0';
+// Color by cumulative confirmed COVID-19 cases per county. The previous breaks
+// (100-1000) were copied from population density, so nearly every county fell
+// into the darkest class. The breaks below are the lower bounds of each class,
+// set from the distribution in usacounties.json (3,217 counties, median about
+// 8,000 cases, 90th percentile about 64,000, max about 3.7 million).
+// Class counts at these breaks: <1k 256, 1k-5k 879, 5k-10k 682, 10k-25k 698,
+// 25k-50k 299, 50k-100k 186, 100k-250k 147, 250k-500k 48, 500k+ 22.
+function getColor(cases) {
+    return cases >= 500000 ? '#800026' :
+        cases >= 250000 ? '#BD0026' :
+        cases >= 100000 ? '#E31A1C' :
+        cases >= 50000 ? '#FC4E2A' :
+        cases >= 25000 ? '#FD8D3C' :
+        cases >= 10000 ? '#FEB24C' :
+        cases >= 5000 ? '#FED976' :
+        cases >= 1000 ? '#FFEDA0' :
+        '#FFFFCC';
 }
 
 function style(feature) {
@@ -150,7 +159,9 @@ function zoomToFeature(e) {
 }
 
 function onEachFeature(feature, layer) {
-    layer._leaflet_id = feature.properties.COUNTY_STATE_NAME;
+    // Key by GEOID: COUNTY_STATE_NAME is not unique (e.g. Fairfax, Virginia is
+    // both county 51059 and independent city 51600).
+    layer._leaflet_id = feature.properties.GEOID;
     layer.on({
         mouseover: highlightFeature,
         mouseout: resetHighlight,
@@ -159,12 +170,15 @@ function onEachFeature(feature, layer) {
 }
 
 // Fire click event and zoom to polygon  
-function layerSelect(a) {
+function layerSelect(geoid) {
     if (lastClickedLayer) {
         geojson.resetStyle(lastClickedLayer);
     }
-    var layer = map._layers[a];
-    layer.fire('click'); // 'clicks' on state name from search
+    var layer = map._layers[geoid];
+    if (!layer) {
+        return;
+    }
+    layer.fire('click'); // 'clicks' on county row from the table
     lastClickedLayer = layer;
 }
 
