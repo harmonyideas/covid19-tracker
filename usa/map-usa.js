@@ -31,23 +31,25 @@ L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_toke
     zoomOffset: -1
 }).addTo(map);
 
-// load GeoJSON from an external file
-$.ajax({
-    url: 'usacounties.json',
-    dataType: 'json',
-    success: function(data) {
-        $.getJSON("usacounties.json", function(data) {
-            buildDataTable(data);
-            // add GeoJSON layer to the map once the file is loaded
-            geojson = L.geoJson(data, {
-                style: style,
-                onEachFeature: onEachFeature
-            }).addTo(map);
-        });
-    },
-    error: function(err) {
-        console.log("AJAX error in request: " + JSON.stringify(err, null, 2));
+// Shows a short message in the page when a data file cannot be loaded.
+function showLoadError() {
+    var status = document.getElementById("status");
+    if (status) {
+        status.textContent = "Sorry, the county data failed to load. Please try again later.";
     }
+}
+
+// load GeoJSON from an external file (fetched once, then reused for the table and the map)
+$.getJSON("usacounties.json", function(data) {
+    buildDataTable(data);
+    // add GeoJSON layer to the map once the file is loaded
+    geojson = L.geoJson(data, {
+        style: style,
+        onEachFeature: onEachFeature
+    }).addTo(map);
+}).catch(function(err) {
+    console.error("Failed to load usacounties.json", err);
+    showLoadError();
 });
 // control that shows state info on hover
 var info = L.control();
@@ -58,11 +60,26 @@ info.update = function(props) {
 };
 
 function buildDataTable(data) {
+    // COUNTY_STATE_NAME is not unique (e.g. "Fairfax, Virginia" is county 51059 and
+    // independent city 51600). In the table only, a name that occurs more than once
+    // gets its GEOID appended so each row is distinguishable. The map keys stay GEOID-based.
+    var nameCounts = Object.create(null);
+    data.features.forEach(function(f) {
+        var name = f.properties.COUNTY_STATE_NAME;
+        nameCounts[name] = (nameCounts[name] || 0) + 1;
+    });
+
     var table = $('#datatable1').DataTable({
         "data": data.features,
         "deferRender": true,
         "columns": [{
-                data: "properties.COUNTY_STATE_NAME"
+                data: "properties.COUNTY_STATE_NAME",
+                render: function(name, type, row) {
+                    if (type !== 'display' || nameCounts[name] < 2) {
+                        return name;
+                    }
+                    return name + ' (' + row.properties.GEOID + ')';
+                }
             },
             {
                 data: "properties.COVID19_CASES"
@@ -184,7 +201,7 @@ function layerSelect(geoid) {
 
 
 // Setup Custom Controls
-//buildLegend();
+buildLegend();
 
 //Setup listener events 
 $('#select-box1').change(function() {

@@ -33,6 +33,14 @@ L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
 }).addTo(map);
 
 
+// Shows a short message in the page when a data file cannot be loaded.
+function showLoadError() {
+    var status = document.getElementById("status");
+    if (status) {
+        status.textContent = "Sorry, the county data failed to load. Please try again later.";
+    }
+}
+
 // load GeoJSON from an external file
 $.getJSON("njcounties.json", function(data) {
     // add GeoJSON layer to the map once the file is loaded
@@ -41,7 +49,7 @@ $.getJSON("njcounties.json", function(data) {
         onEachFeature: onEachFeature
     }).addTo(map);
     buildDataTable(data);
-});
+}).catch(showLoadError);
 
 
 // control that shows state info on hover
@@ -57,8 +65,13 @@ info.update = function(props) {
 
 // Initialize JSON datatable
 const buildDataTable = (data) => {
+  // Skip the "Unassigned" feature (GEOID "0"): it is not a county, has an empty
+  // polygon and its cases must not be counted in the table.
+  const rows = data.features.filter(function(f) {
+    return f.properties.GEOID !== "0";
+  });
   const table = $('#datatable1').DataTable({
-    "data": data.features,
+    "data": rows,
     "columns": [
       {
         "data": "properties.NAME"
@@ -199,7 +212,7 @@ function layerSelect(layerId) {
 
 // Setup Custom Controls
 buildSelect();
-//buildLegend();
+buildLegend();
 
 //Setup listener events 
 $('#select-box1').change(function() {
