@@ -9,7 +9,7 @@ var njcounties = ["Atlantic", "Bergen", "Burlington", "Camden", "Cape May", "Cum
 ];
 
 // Set boundry for NorthWest and SouthEast NJ map coordinates
-bounds = new L.LatLngBounds(new L.LatLng(41.58, -75.800), new L.LatLng(38.805, -73.263));
+var bounds = new L.LatLngBounds(new L.LatLng(41.58, -75.800), new L.LatLng(38.805, -73.263));
 var map = L.map('map', {
     maxBounds: bounds,
     maxBoundsViscosity: 1.0
@@ -33,15 +33,23 @@ L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
 }).addTo(map);
 
 
+// Shows a short message in the page when a data file cannot be loaded.
+function showLoadError() {
+    var status = document.getElementById("status");
+    if (status) {
+        status.textContent = "Sorry, the county data failed to load. Please try again later.";
+    }
+}
+
 // load GeoJSON from an external file
 $.getJSON("njcounties.json", function(data) {
-    buildDataTable(data);
     // add GeoJSON layer to the map once the file is loaded
     geojson = L.geoJson(data, {
         style: style,
         onEachFeature: onEachFeature
     }).addTo(map);
-});
+    buildDataTable(data);
+}).catch(showLoadError);
 
 
 // control that shows state info on hover
@@ -57,8 +65,13 @@ info.update = function(props) {
 
 // Initialize JSON datatable
 const buildDataTable = (data) => {
+  // Skip the "Unassigned" feature (GEOID "0"): it is not a county, has an empty
+  // polygon and its cases must not be counted in the table.
+  const rows = data.features.filter(function(f) {
+    return f.properties.GEOID !== "0";
+  });
   const table = $('#datatable1').DataTable({
-    "data": data.features,
+    "data": rows,
     "columns": [
       {
         "data": "properties.NAME"
@@ -76,7 +89,8 @@ const buildDataTable = (data) => {
         "data": "properties.COVID19_DEATHS"
       },
     ]
-});
+  });
+};
     
 // Initialize the drop down
 function buildSelect() {
@@ -94,7 +108,7 @@ function buildSelect() {
 // Initialize the map legend
 function buildLegend() {
     var legendinfo_div = document.getElementById("legendinfo");
-    var grades = [0, 50, 100, 200, 300, 400, 500];
+    var grades = [0, 25000, 50000, 100000, 150000, 200000, 250000, 300000];
     var labels = ['<strong>Confirmed COVID-19 Cases</strong>'];
     var from;
     var to;
@@ -117,16 +131,18 @@ function buildLegend() {
 }
 
 //Assign map color to county depending on number of covid-cases
+// Cumulative confirmed cases per NJ county. Breaks are the lower bounds of each
+// class, chosen from njcounties.json (22 counties, 3,335 to 326,525 cases):
+// 25k, 50k, 100k, 150k, 200k, 250k, 300k. They are evenly spaced across the range
+// so that each class holds at least one county.
 function getColor(covidCases) {
-    // Returns a color depending on the population density value.
-    // This value is then used to select a color from a list of colors.
-    return covidCases > 200000 ? '#800026' :
-        covidCases > 100000 ? '#BD0026' :
-        covidCases > 75000 ? '#E31A1C' :
-        covidCases > 55000 ? '#FC4E2A' :
-        covidCases > 250000 ? '#FD8D3C' :
-        covidCases > 15000 ? '#FEB24C' :
-        covidCases > 0 ? '#FED976' :
+    return covidCases >= 300000 ? '#800026' :
+        covidCases >= 250000 ? '#BD0026' :
+        covidCases >= 200000 ? '#E31A1C' :
+        covidCases >= 150000 ? '#FC4E2A' :
+        covidCases >= 100000 ? '#FD8D3C' :
+        covidCases >= 50000 ? '#FEB24C' :
+        covidCases >= 25000 ? '#FED976' :
         '#FFEDA0';
 }
 
@@ -182,15 +198,21 @@ function layerSelect(layerId) {
 
     if (lastClickedLayer) {
         geojson.resetStyle(lastClickedLayer);
+        lastClickedLayer = null;
     }
     const layer = map._layers[layerId];
+    if (!layer) {
+        // "New Jersey" is not a county polygon: go back to the full-state view.
+        map.setView([40.44, -74.59], 8);
+        return;
+    }
     layer.fire('click');
     lastClickedLayer = layer;
 }
 
 // Setup Custom Controls
 buildSelect();
-//buildLegend();
+buildLegend();
 
 //Setup listener events 
 $('#select-box1').change(function() {

@@ -46,12 +46,12 @@ def update_usacounties_json(data_df, file_local, file_www):
 
     with open(file_www, "w+") as f_www:
         json.dump(data, f_www, separators=(",", ":"))
-        compress_to_string(f_www)
-    f_www.close()
 
 
 if __name__ == "__main__":
-    FILE_DATE = "03-09-2023.csv"
+    if len(sys.argv) != 2:
+        sys.exit(f"usage: {sys.argv[0]} <daily-report-file.csv>  e.g. 03-09-2023.csv")
+    FILE_DATE = sys.argv[1]
     MY_DF = download_covid19_data(FILE_DATE)
     update_usacounties_json(
         MY_DF,
