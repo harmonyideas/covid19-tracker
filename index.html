@@ -3,7 +3,7 @@
 
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>A Leaflet map!</title>
+    <title>NJ COVID-19 Wastewater Tracker</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.6.0/dist/leaflet.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.10.20/css/jquery.dataTables.min.css">
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
@@ -33,25 +33,28 @@
                 <div class="card text-center mb-3 blue">
                     <div class="card-header card-header-o">
                         <h5>NJ County Data</h5>
+                        <small class="text-muted" id="weekinfo"></small>
                     </div>
                     <div class="card-body mb-3" id="countytable">
                         <table id="datatable1" class="display compact">
                             <thead>
                                 <tr>
                                     <th>Name</th>
-                                    <th>Population</th>
-                                    <th>Pop. Density</th>
-                                    <th>Covid19 Cases</th>
-                                    <th>Covid19 Deaths</th>
+                                    <th>Wastewater Level</th>
+                                    <th>vs. Last Week</th>
+                                    <th>Sites</th>
+                                    <th>Cases (thru 3/2023)</th>
+                                    <th>Deaths (thru 3/2023)</th>
                                 </tr>
                             </thead>
                             <tfoot>
                                 <tr>
                                     <th>Name</th>
-                                    <th>Population</th>
-                                    <th>Pop. Density</th>
-                                    <th>Covid19 Cases</th>
-                                    <th>Covid19 Deaths</th>
+                                    <th>Wastewater Level</th>
+                                    <th>vs. Last Week</th>
+                                    <th>Sites</th>
+                                    <th>Cases (thru 3/2023)</th>
+                                    <th>Deaths (thru 3/2023)</th>
                                 </tr>
                             </tfoot>
                         </table>
@@ -64,6 +67,9 @@
                     <div class="card-body py-2">
                         <div id="legendinfo" class="legend text-left"></div>
                         <p id="status" class="text-danger mb-0" role="alert"></p>
+                        <p class="small text-muted text-left mb-0">Levels are CDC wastewater viral activity levels, combined
+                            from the treatment plants serving each county and weighted by population. Updated weekly.
+                            Case and death totals stopped when national reporting ended in March 2023.</p>
                     </div>
                 </div>
             </div>
@@ -85,25 +91,41 @@
                         <div class="h5 mb-0 font-weight-bold text-gray-800" id="infoPopulation"></div>
                     </div>
                 </div>
-                <div class="card text-center mb-3 blue">
+                <div class="card text-center mb-3 red">
                     <div class="card-header card-header-o">
-                        <h5>County Pop. Density</h5>
+                        <h5>COVID-19 Wastewater Level</h5>
                     </div>
                     <div class="card-body">
-                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="infoPopDensity"></div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="infoWwLevel"></div>
                     </div>
                 </div>
                 <div class="card text-center mb-3 orange">
                     <div class="card-header card-header-o">
-                        <h5>County Covid-19 Cases</h5>
+                        <h5>Change vs. Last Week</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="infoWwTrend"></div>
+                    </div>
+                </div>
+                <div class="card text-center mb-3 blue">
+                    <div class="card-header card-header-o">
+                        <h5>Sampling Sites</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="infoWwSites"></div>
+                    </div>
+                </div>
+                <div class="card text-center mb-3 black">
+                    <div class="card-header card-header-o">
+                        <h5>Total Cases (final, March 2023)</h5>
                     </div>
                     <div class="card-body">
                         <div class="h5 mb-0 font-weight-bold text-gray-800" id="infoCovid19Cases"></div>
                     </div>
                 </div>
-                <div class="card text-center mb-3 red">
+                <div class="card text-center mb-3 black">
                     <div class="card-header card-header-o">
-                        <h5>County Covid-19 Deaths</h5>
+                        <h5>Total Deaths (final, March 2023)</h5>
                     </div>
                     <div class="card-body">
                         <div class="h5 mb-0 font-weight-bold text-gray-800" id="infoCovid19Deaths"></div>

@@ -112,3 +112,12 @@ table.dataTable tr.even{
   background-color: #f4fbfd; 
   border:1px lightgrey; 
 }*/
+
+.swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-right: 6px;
+  vertical-align: middle;
+  border: 1px solid #999;
+}

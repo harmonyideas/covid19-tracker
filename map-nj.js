@@ -8,6 +8,18 @@ var njcounties = ["Atlantic", "Bergen", "Burlington", "Camden", "Cape May", "Cum
     "Warren"
 ];
 
+// CDC wastewater viral activity levels, lowest to highest, with map colors.
+var WW_LEVELS = ["Very Low", "Low", "Moderate", "High", "Very High"];
+var WW_COLORS = {
+    "Very Low": "#FFEDA0",
+    "Low": "#FED976",
+    "Moderate": "#FD8D3C",
+    "High": "#E31A1C",
+    "Very High": "#800026"
+};
+var NO_DATA_COLOR = "#BDBDBD";
+var TREND_ARROWS = { "Up": "&#9650; up", "Down": "&#9660; down", "Same": "&#9654; no change" };
+
 // Set boundry for NorthWest and SouthEast NJ map coordinates
 var bounds = new L.LatLngBounds(new L.LatLng(41.58, -75.800), new L.LatLng(38.805, -73.263));
 var map = L.map('map', {
@@ -22,14 +34,13 @@ map.on('drag', function() {
     });
 });
 
-// load a tile layer
+// load a tile layer. OpenStreetMap serves 256px tiles, so Leaflet's defaults
+// apply (the old 512px/zoomOffset settings were for Mapbox and blurred the map).
 L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     minZoom: 7,
     maxZoom: 9,
-    attribution:'&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    id: 'mapbox/light-v9',
-    tileSize: 512,
-    zoomOffset: -1
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> | ' +
+        'Wastewater data: <a href="https://www.cdc.gov/nwss/">CDC NWSS</a>'
 }).addTo(map);
 
 
@@ -41,6 +52,17 @@ function showLoadError() {
     }
 }
 
+// Shows which CDC reporting week the map is for.
+function showWeek(data) {
+    var week = document.getElementById("weekinfo");
+    if (week && data.ww_week_end) {
+        var d = new Date(data.ww_week_end + "T00:00:00");
+        week.textContent = "Week ending " + d.toLocaleDateString("en-US", {
+            month: "long", day: "numeric", year: "numeric"
+        });
+    }
+}
+
 // load GeoJSON from an external file
 $.getJSON("njcounties.json", function(data) {
     // add GeoJSON layer to the map once the file is loaded
@@ -49,38 +71,68 @@ $.getJSON("njcounties.json", function(data) {
         onEachFeature: onEachFeature
     }).addTo(map);
     buildDataTable(data);
+    showWeek(data);
 }).catch(showLoadError);
 
+
+function levelText(props) {
+    return props.WW_LEVEL || "No data";
+}
+
+function trendText(props) {
+    return TREND_ARROWS[props.WW_TREND] || "&ndash;";
+}
+
+function formatNumber(n) {
+    return (n === null || n === undefined) ? "&ndash;" : Number(n).toLocaleString("en-US");
+}
 
 // control that shows state info on hover
 var info = L.control();
 
 info.update = function(props) {
     document.getElementById("infoName").innerHTML = '<b>' + props.NAME + '</b>';
-    document.getElementById("infoPopulation").innerHTML = '<b>' + props.POPULATION + '</b>';
-    document.getElementById("infoPopDensity").innerHTML = '<b>' + props.POP_DENSITY + '</b>';
-    document.getElementById("infoCovid19Cases").innerHTML = '<b>' + props.COVID19_CASES + '</b>';
-    document.getElementById("infoCovid19Deaths").innerHTML = '<b>' + props.COVID19_DEATHS + '</b>';
+    document.getElementById("infoPopulation").innerHTML = '<b>' + formatNumber(props.POPULATION) + '</b>';
+    document.getElementById("infoWwLevel").innerHTML =
+        '<i class="swatch" style="background:' + getColor(props.WW_LEVEL) + '"></i><b>' + levelText(props) + '</b>';
+    document.getElementById("infoWwTrend").innerHTML = '<b>' + trendText(props) + '</b>';
+    document.getElementById("infoWwSites").innerHTML = '<b>' + formatNumber(props.WW_SITES) + '</b>';
+    document.getElementById("infoCovid19Cases").innerHTML = '<b>' + formatNumber(props.COVID19_CASES) + '</b>';
+    document.getElementById("infoCovid19Deaths").innerHTML = '<b>' + formatNumber(props.COVID19_DEATHS) + '</b>';
 };
 
 // Initialize JSON datatable
 const buildDataTable = (data) => {
-  // Skip the "Unassigned" feature (GEOID "0"): it is not a county, has an empty
-  // polygon and its cases must not be counted in the table.
+  // Skip the "Unassigned" feature (GEOID "0"): it is not a county and has an empty polygon.
   const rows = data.features.filter(function(f) {
     return f.properties.GEOID !== "0";
   });
-  const table = $('#datatable1').DataTable({
+  $('#datatable1').DataTable({
     "data": rows,
+    "order": [[1, "desc"]],
     "columns": [
       {
         "data": "properties.NAME"
       },
       {
-        "data": "properties.POPULATION"
+        // Sort by level (High above Low), display the CDC label.
+        "data": "properties.WW_LEVEL",
+        "render": function(level, type) {
+          if (type === "sort" || type === "type") {
+            return WW_LEVELS.indexOf(level);
+          }
+          return level || "No data";
+        }
       },
       {
-        "data": "properties.POP_DENSITY"
+        "data": "properties.WW_TREND",
+        "render": function(t, type) {
+          return type === "display" ? (TREND_ARROWS[t] || "&ndash;") : (t || "");
+        }
+      },
+      {
+        "data": "properties.WW_SITES",
+        "defaultContent": "0"
       },
       {
         "data": "properties.COVID19_CASES"
@@ -91,7 +143,7 @@ const buildDataTable = (data) => {
     ]
   });
 };
-    
+
 // Initialize the drop down
 function buildSelect() {
     var options_str = "";
@@ -107,47 +159,21 @@ function buildSelect() {
 
 // Initialize the map legend
 function buildLegend() {
-    var legendinfo_div = document.getElementById("legendinfo");
-    var grades = [0, 25000, 50000, 100000, 150000, 200000, 250000, 300000];
-    var labels = ['<strong>Confirmed COVID-19 Cases</strong>'];
-    var from;
-    var to;
-
-    // loop through our density intervals and generate a label with a colored square for each interval
-    for (var i = 0; i < grades.length; i++) {
-        from = grades[i];
-        to = grades[i + 1] - 1;
-
-        legendinfo_div.innerHTML +=
-            '<i style="background:' + getColor(grades[i] + 1) + '"></i> ' +
-            grades[i] + (grades[i + 1] ? '&ndash;' + grades[i + 1] + '<br>' : '+');
-
-        labels.push(
-            '<i style="background:' + getColor(from + 1) + '"></i> ' +
-            from + (to ? '&ndash;' + to : '+'));
-
+    var labels = ['<strong>COVID-19 wastewater level</strong>'];
+    for (var i = WW_LEVELS.length - 1; i >= 0; i--) {
+        labels.push('<i style="background:' + WW_COLORS[WW_LEVELS[i]] + '"></i> ' + WW_LEVELS[i]);
     }
-    legendinfo_div.innerHTML = labels.join('<br>');
+    labels.push('<i style="background:' + NO_DATA_COLOR + '"></i> No data');
+    document.getElementById("legendinfo").innerHTML = labels.join('<br>');
 }
 
-//Assign map color to county depending on number of covid-cases
-// Cumulative confirmed cases per NJ county. Breaks are the lower bounds of each
-// class, chosen from njcounties.json (22 counties, 3,335 to 326,525 cases):
-// 25k, 50k, 100k, 150k, 200k, 250k, 300k. They are evenly spaced across the range
-// so that each class holds at least one county.
-function getColor(covidCases) {
-    return covidCases >= 300000 ? '#800026' :
-        covidCases >= 250000 ? '#BD0026' :
-        covidCases >= 200000 ? '#E31A1C' :
-        covidCases >= 150000 ? '#FC4E2A' :
-        covidCases >= 100000 ? '#FD8D3C' :
-        covidCases >= 50000 ? '#FEB24C' :
-        covidCases >= 25000 ? '#FED976' :
-        '#FFEDA0';
+// Assign map color to a county from its CDC wastewater level.
+function getColor(level) {
+    return WW_COLORS[level] || NO_DATA_COLOR;
 }
 
 
-// Style layers 
+// Style layers
 function style(feature) {
     return {
         weight: 2,
@@ -155,7 +181,7 @@ function style(feature) {
         color: 'white',
         dashArray: '3',
         fillOpacity: 0.7,
-        fillColor: getColor(feature.properties.COVID19_CASES)
+        fillColor: getColor(feature.properties.WW_LEVEL)
     };
 }
 
@@ -214,7 +240,7 @@ function layerSelect(layerId) {
 buildSelect();
 buildLegend();
 
-//Setup listener events 
+//Setup listener events
 $('#select-box1').change(function() {
     layerSelect(this.value);
 });
