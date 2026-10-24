@@ -9,10 +9,14 @@ refresh the data.
 | USA counties | `usa/index.html` + `usa/map-usa.js` | Johns Hopkins CSSE cases and deaths (see [usa/README.md](usa/README.md)) |
 
 # Tracking COVID-19 for NJ counties
-![covid-19-nj](/screenshots/nj-covid19-tracker.png "NJ CoronaVirus Stats")
+Weekly CDC wastewater levels by county (screenshot: week ending October 17, 2026).
+
+![NJ county map colored by CDC COVID-19 wastewater level](/screenshots/nj-covid19-tracker.png "NJ COVID-19 wastewater levels")
 
 # Tracking COVID-19 for USA counties
-![covid-19-usa](/screenshots/usa-covid19-tracker.png "USA CoronaVirus Stats")
+Final cumulative cases and deaths by county, as of March 2023.
+
+![USA county map colored by total COVID-19 cases](/screenshots/usa-covid19-tracker.png "USA COVID-19 cases by county")
 
 # Running it
 There is no build step, and no PHP or database is needed: any web server that serves the
