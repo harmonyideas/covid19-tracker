@@ -221,6 +221,15 @@ a { color: var(--water); }
 
 .leaflet-container { font-family: var(--font); }
 
+/* Mute OpenStreetMap's colorful tiles so the county colors stand out. */
+.basemap-osm { filter: grayscale(1) contrast(0.85) brightness(1.06); }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .basemap-osm {
+    filter: grayscale(1) invert(1) contrast(0.8) brightness(0.75);
+  }
+}
+
 .leaflet-tooltip.county-tip {
   background: var(--surface);
   color: var(--ink);

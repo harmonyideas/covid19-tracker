@@ -1,5 +1,13 @@
 // Shared helpers for the NJ and USA maps: base map tiles and small formatters.
-// No API key is needed: tiles come from CARTO's free basemaps (OpenStreetMap data).
+//
+// Base map: OpenStreetMap's standard tiles by default, which need no API key (light
+// use only, see https://operations.osmfoundation.org/policies/tiles/). The page tones
+// them down with a CSS filter in assets/tracker.css.
+//
+// Optional: CARTO's cleaner light/dark tiles, with place names drawn above the counties,
+// need a free key from https://carto.com/basemaps/apikey/ (5 million tiles a month for
+// non-commercial use). Paste it below to switch to them.
+var CARTO_API_KEY = "";
 
 var Tracker = (function() {
     "use strict";
@@ -10,26 +18,35 @@ var Tracker = (function() {
         return !!(darkQuery && darkQuery.matches);
     }
 
-    function tileUrl(kind) {
+    function cartoUrl(kind) {
         var style = (isDark() ? "dark_" : "light_") + kind;
-        return "https://{s}.basemaps.cartocdn.com/" + style + "/{z}/{x}/{y}{r}.png";
+        return "https://{s}.basemaps.cartocdn.com/rastertiles/" + style + "/{z}/{x}/{y}{r}.png?key=" +
+            encodeURIComponent(CARTO_API_KEY);
     }
 
-    // Adds a label-free base layer under the counties and a labels-only layer above
+    function addOsmBasemap(map) {
+        L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            maxZoom: 19,
+            className: "basemap-osm"
+        }).addTo(map);
+    }
+
+    // CARTO: a label-free base layer under the counties and a labels-only layer above
     // them, so place names stay readable on top of the colored polygons.
-    function addBasemap(map) {
+    function addCartoBasemap(map) {
         map.createPane("labels");
         map.getPane("labels").style.zIndex = 450;
         map.getPane("labels").style.pointerEvents = "none";
 
         var attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> ' +
             '&copy; <a href="https://carto.com/attributions">CARTO</a>';
-        var base = L.tileLayer(tileUrl("nolabels"), {
+        var base = L.tileLayer(cartoUrl("nolabels"), {
             attribution: attribution,
             subdomains: "abcd",
             maxZoom: 19
         }).addTo(map);
-        var labels = L.tileLayer(tileUrl("only_labels"), {
+        var labels = L.tileLayer(cartoUrl("only_labels"), {
             pane: "labels",
             subdomains: "abcd",
             maxZoom: 19
@@ -37,9 +54,17 @@ var Tracker = (function() {
 
         if (darkQuery && darkQuery.addEventListener) {
             darkQuery.addEventListener("change", function() {
-                base.setUrl(tileUrl("nolabels"));
-                labels.setUrl(tileUrl("only_labels"));
+                base.setUrl(cartoUrl("nolabels"));
+                labels.setUrl(cartoUrl("only_labels"));
             });
+        }
+    }
+
+    function addBasemap(map) {
+        if (CARTO_API_KEY) {
+            addCartoBasemap(map);
+        } else {
+            addOsmBasemap(map);
         }
     }
 

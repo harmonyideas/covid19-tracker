@@ -4,7 +4,7 @@ An interactive Leaflet map of confirmed COVID-19 cases and deaths for every US c
 (3,217 features in `usacounties.json`), colored by cumulative cases or deaths. Pick a state to
 narrow the map and the ranked list, search for a county, or click one on the map to see its
 totals and rank. Counties with zero cases reported under a larger health district and show as
-not reported. Base map tiles come from CARTO, so no API key is needed.
+not reported. The background map needs no API key (see the main README).
 
 ## Files
 

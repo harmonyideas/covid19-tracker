@@ -1,7 +1,7 @@
 # covid19-tracker
 COVID-19 county maps for New Jersey and the USA. A static site (HTML, JavaScript and
 GeoJSON) built on Leaflet 1.9 and plain JavaScript, plus Python scripts that refresh the
-data. Base map tiles come from CARTO's free basemaps, so no API key is needed. Both pages
+data. The background map uses OpenStreetMap's standard tiles, which need no API key. Both pages
 work on phones and follow the system's light or dark setting.
 
 | Map | Page | Data |
@@ -96,3 +96,10 @@ has hard-coded input and output paths. See [usa/README.md](usa/README.md).
 - `usa/index.html`, `usa/map-usa.js`: the USA page.
 - `assets/tracker.css`: styles shared by both pages.
 - `assets/basemap.js`: base map tiles and small helpers shared by both pages.
+
+# Background map
+By default both pages use OpenStreetMap's standard tiles, which need no key but are meant
+for light use ([tile usage policy](https://operations.osmfoundation.org/policies/tiles/)).
+For a cleaner background with place names drawn above the counties, request a free CARTO key
+at https://carto.com/basemaps/apikey/ (non-commercial use, 5 million tiles a month) and set
+`CARTO_API_KEY` at the top of `assets/basemap.js`.
