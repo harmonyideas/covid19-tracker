@@ -1,7 +1,8 @@
 # covid19-tracker
 COVID-19 county maps for New Jersey and the USA. A static site (HTML, JavaScript and
-GeoJSON) built on Leaflet, jQuery, DataTables and Bootstrap, plus Python scripts that
-refresh the data.
+GeoJSON) built on Leaflet 1.9 and plain JavaScript, plus Python scripts that refresh the
+data. Base map tiles come from CARTO's free basemaps, so no API key is needed. Both pages
+work on phones and follow the system's light or dark setting.
 
 | Map | Page | Data |
 |-----|------|------|
@@ -9,12 +10,18 @@ refresh the data.
 | USA counties | `usa/index.html` + `usa/map-usa.js` | Johns Hopkins CSSE cases and deaths (see [usa/README.md](usa/README.md)) |
 
 # Tracking COVID-19 for NJ counties
-Weekly CDC wastewater levels by county (screenshot: week ending October 17, 2026).
+Weekly CDC wastewater levels by county (screenshot: week ending October 17, 2026). The bar
+at the top shows the share of New Jersey residents living in counties at each level and
+doubles as the map legend. Select a county on the map, in the list or by searching to see its
+level, the change from the week before and an 8-week trend. The selected county is kept in
+the page address (for example `#county=Mercer`), so a view can be shared.
 
-![NJ county map colored by CDC COVID-19 wastewater level](/screenshots/nj-covid19-tracker.png "NJ COVID-19 wastewater levels")
+![NJ county map colored by CDC COVID-19 wastewater level, with the statewide level bar and county list](/screenshots/nj-covid19-tracker.png "NJ COVID-19 wastewater levels")
 
 # Tracking COVID-19 for USA counties
-Final cumulative cases and deaths by county, as of March 2023.
+Final cumulative cases and deaths by county, as of March 2023. Switch between cases and
+deaths, narrow the map and the ranked list to one state, or search for a county to see its
+totals and its rank in its state and the country.
 
 ![USA county map colored by total COVID-19 cases](/screenshots/usa-covid19-tracker.png "USA COVID-19 cases by county")
 
@@ -76,7 +83,16 @@ A Socrata app token is optional (it raises the rate limit). Create one free at
 https://data.cdc.gov/profile/edit/developer_settings and set `SOCRATA_APP_TOKEN` in the cron
 environment. Use `--input` to test against saved API rows instead of downloading.
 
+The script also writes each county's last 8 weeks (`WW_HISTORY`, with the week dates in
+`ww_weeks`) for the trend charts. Until it has run once, the page shows every county as
+no data and says the levels haven't been loaded yet.
+
 # USA map
-The USA map needs a Mapbox token for its base map tiles: replace `YOUR_MAPBOX_TOKEN` in
-`usa/map-usa.js` with your own public token, and don't commit a real token. Its import script
-needs `pandas` and has hard-coded input and output paths. See [usa/README.md](usa/README.md).
+The USA map needs no setup beyond serving the files. Its import script needs `pandas` and
+has hard-coded input and output paths. See [usa/README.md](usa/README.md).
+
+# Files
+- `index.html`, `map-nj.js`: the NJ page.
+- `usa/index.html`, `usa/map-usa.js`: the USA page.
+- `assets/tracker.css`: styles shared by both pages.
+- `assets/basemap.js`: base map tiles and small helpers shared by both pages.

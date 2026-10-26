@@ -1,139 +1,81 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NJ COVID-19 Wastewater Tracker</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.6.0/dist/leaflet.css">
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.10.20/css/jquery.dataTables.min.css">
-    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
-    <link rel="stylesheet" href="map.css">
-    <script src="https://unpkg.com/leaflet@1.6.0/dist/leaflet.js"></script>
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
-    <script src="https://cdn.datatables.net/1.10.20/js/jquery.dataTables.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js" integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6" crossorigin="anonymous"></script>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>New Jersey COVID-19 Wastewater Levels by County</title>
+    <meta name="description" content="Weekly CDC COVID-19 wastewater levels for every New Jersey county, with an 8-week trend.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;700&display=swap">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin="anonymous">
+    <link rel="stylesheet" href="assets/tracker.css">
 </head>
-<body>
-    <div class="container">
-        <div class="row">
-            <div class="col-sm">
-                <p>&nbsp;</p>
-                <br />
-            </div>
-        </div>
-    </div>
-    <div class="container-fluid">
-        <div class="row">
-            <div class="col">
-                <div class="card text-center mb-3 blue">
-                    <div class="card-header card-header-o" id="selectlayer">
-                        <h5>Select a location</h5>
-                    </div>
-                </div>
-                <div class="card text-center mb-3 blue">
-                    <div class="card-header card-header-o">
-                        <h5>NJ County Data</h5>
-                        <small class="text-muted" id="weekinfo"></small>
-                    </div>
-                    <div class="card-body mb-3" id="countytable">
-                        <table id="datatable1" class="display compact">
-                            <thead>
-                                <tr>
-                                    <th>Name</th>
-                                    <th>Wastewater Level</th>
-                                    <th>vs. Last Week</th>
-                                    <th>Sites</th>
-                                    <th>Cases (thru 3/2023)</th>
-                                    <th>Deaths (thru 3/2023)</th>
-                                </tr>
-                            </thead>
-                            <tfoot>
-                                <tr>
-                                    <th>Name</th>
-                                    <th>Wastewater Level</th>
-                                    <th>vs. Last Week</th>
-                                    <th>Sites</th>
-                                    <th>Cases (thru 3/2023)</th>
-                                    <th>Deaths (thru 3/2023)</th>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
-                </div>
-            </div>
-            <div class="col-sm-5">
-                <div class="card text-center mb-3 blue">
-                    <div class="card-header card-header-o" id="map"></div>
-                    <div class="card-body py-2">
-                        <div id="legendinfo" class="legend text-left"></div>
-                        <p id="status" class="text-danger mb-0" role="alert"></p>
-                        <p class="small text-muted text-left mb-0">Levels are CDC wastewater viral activity levels, combined
-                            from the treatment plants serving each county and weighted by population. Updated weekly.
-                            Case and death totals stopped when national reporting ended in March 2023.</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col">
-                <div class="card text-center mb-3 blue">
-                    <div class="card-header card-header-o">
-                        <h5>County Name</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="infoName"></div>
-                    </div>
-                </div>
 
-                <div class="card text-center mb-3 blue">
-                    <div class="card-header card-header-o">
-                        <h5>County Population</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="infoPopulation"></div>
-                    </div>
-                </div>
-                <div class="card text-center mb-3 red">
-                    <div class="card-header card-header-o">
-                        <h5>COVID-19 Wastewater Level</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="infoWwLevel"></div>
-                    </div>
-                </div>
-                <div class="card text-center mb-3 orange">
-                    <div class="card-header card-header-o">
-                        <h5>Change vs. Last Week</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="infoWwTrend"></div>
-                    </div>
-                </div>
-                <div class="card text-center mb-3 blue">
-                    <div class="card-header card-header-o">
-                        <h5>Sampling Sites</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="infoWwSites"></div>
-                    </div>
-                </div>
-                <div class="card text-center mb-3 black">
-                    <div class="card-header card-header-o">
-                        <h5>Total Cases (final, March 2023)</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="infoCovid19Cases"></div>
-                    </div>
-                </div>
-                <div class="card text-center mb-3 black">
-                    <div class="card-header card-header-o">
-                        <h5>Total Deaths (final, March 2023)</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="infoCovid19Deaths"></div>
-                    </div>
-                </div>
+<body>
+    <div class="page">
+        <header class="head">
+            <div>
+                <h1>COVID-19 in New Jersey wastewater</h1>
+                <p class="lede" id="lede">CDC viral activity levels for each county, updated every Friday.</p>
             </div>
+            <nav class="switch" aria-label="Choose a map">
+                <a href="./" aria-current="page">New Jersey</a>
+                <a href="usa/">United States</a>
+            </nav>
+        </header>
+
+        <section class="band" aria-labelledby="band-title">
+            <h2 class="band-title" id="band-title">New Jersey residents by their county's wastewater level</h2>
+            <div class="levelbar" id="levelbar" aria-hidden="true"></div>
+            <ul class="levelkey" id="levelkey"></ul>
+        </section>
+
+        <div class="map-wrap">
+            <div id="map" role="region" aria-label="Map of New Jersey counties colored by wastewater level"></div>
+            <p class="map-status" id="status" role="alert"></p>
         </div>
+
+        <aside class="panel" aria-label="County details">
+            <div class="panel-section">
+                <label class="field-label" for="search">Find a county</label>
+                <input class="input" id="search" type="search" placeholder="Type a county name" autocomplete="off">
+            </div>
+            <div class="panel-section detail" id="detail" aria-live="polite"></div>
+            <div class="list-head">
+                <h2 id="list-title">All counties</h2>
+                <button class="sort" id="sort" type="button">Sort by name</button>
+            </div>
+            <ul class="county-list" id="list" aria-labelledby="list-title"></ul>
+        </aside>
+
+        <footer class="foot">
+            <div>
+                <h2>Where the levels come from</h2>
+                <p>CDC's National Wastewater Surveillance System rates each treatment plant's COVID-19 viral activity
+                    every week. A county's level combines the plants that serve it, weighted by the number of people
+                    each plant serves. Counties with no reporting plant show no data.</p>
+            </div>
+            <div>
+                <h2>Case and death totals</h2>
+                <p>Counts stopped when national case reporting ended in March 2023. They are the final totals from
+                    The New York Times and do not reflect current spread.</p>
+            </div>
+            <div>
+                <h2>Sources</h2>
+                <p><a href="https://data.cdc.gov/Public-Health-Surveillance/CDC-Wastewater-Viral-Activity-Level-for-SARS-CoV-2/atcp-73re">CDC
+                        wastewater viral activity levels</a>,
+                    <a href="https://github.com/nytimes/covid-19-data">NYT COVID-19 data</a>,
+                    <a href="https://github.com/harmonyideas/covid19-tracker">source code</a>.</p>
+            </div>
+        </footer>
     </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH" crossorigin="anonymous"></script>
+    <script src="assets/basemap.js"></script>
     <script src="map-nj.js"></script>
 </body>
 

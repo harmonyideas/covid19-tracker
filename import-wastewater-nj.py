@@ -42,8 +42,11 @@ NO_DATA = "No data"
 # relative to the week being reported, so one-off or retired sites drop out.
 MAX_SITE_AGE_DAYS = 14
 
-# How far back to request rows: enough for this week, last week and stale checks.
-LOOKBACK_DAYS = 42
+# Weeks of per-county history written for the page's trend charts.
+HISTORY_WEEKS = 8
+
+# How far back to request rows: the history weeks plus the stale-site window.
+LOOKBACK_DAYS = 7 * HISTORY_WEEKS + MAX_SITE_AGE_DAYS + 7
 
 DEFAULT_GEOJSON = "/usr/local/bin/www-scripts/njcounties.json"
 DEFAULT_OUT = "/var/www/html/harmonyideas.com/map/njcounties.json"
@@ -152,8 +155,10 @@ def update_geojson(geojson, rows):
     if not rows:
         sys.exit("No usable NJ wastewater rows returned; leaving the map unchanged.")
     latest_week = max(row["week"] for row in rows)
-    this_week = county_levels(rows, latest_week)
-    last_week = county_levels(rows, latest_week - timedelta(days=7))
+    weeks = [latest_week - timedelta(days=7 * i) for i in range(HISTORY_WEEKS - 1, -1, -1)]
+    by_week = {week: county_levels(rows, week) for week in weeks}
+    this_week = by_week[latest_week]
+    last_week = by_week[latest_week - timedelta(days=7)]
 
     for feature in geojson["features"]:
         props = feature["properties"]
@@ -167,8 +172,15 @@ def update_geojson(geojson, rows):
         props["WW_WVAL"] = now["wval"] if now else None
         props["WW_SITES"] = now["sites"] if now else 0
         props["WW_TREND"] = trend(level, before["level"] if before else NO_DATA)
+        # Oldest first; one entry per week in geojson["ww_weeks"]. null = no data that week.
+        props["WW_HISTORY"] = [
+            {"level": by_week[week][key]["level"], "wval": by_week[week][key]["wval"]}
+            if key in by_week[week] else None
+            for week in weeks
+        ]
 
     geojson["ww_week_end"] = latest_week.isoformat()
+    geojson["ww_weeks"] = [week.isoformat() for week in weeks]
     return geojson
 
 

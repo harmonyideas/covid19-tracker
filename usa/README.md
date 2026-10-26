@@ -1,12 +1,15 @@
 # USA COVID-19 county map
 
 An interactive Leaflet map of confirmed COVID-19 cases and deaths for every US county
-(3,217 features in `usacounties.json`). Counties are colored by cumulative confirmed cases.
-Hover a county to see its totals, click a county in the table or pick it from the map to zoom to it.
+(3,217 features in `usacounties.json`), colored by cumulative cases or deaths. Pick a state to
+narrow the map and the ranked list, search for a county, or click one on the map to see its
+totals and rank. Counties with zero cases reported under a larger health district and show as
+not reported. Base map tiles come from CARTO, so no API key is needed.
 
 ## Files
 
-- `index.html` and `map-usa.js`: the page and the map/table code.
+- `index.html` and `map-usa.js`: the page and the map and list code. Styles are in
+  `../assets/tracker.css`.
 - `usacounties.json`: county boundaries (GeoJSON) with `COVID19_CASES` and `COVID19_DEATHS`.
 - `import-csvdata-usa.py`: refreshes the case and death counts in `usacounties.json`.
 
@@ -25,13 +28,3 @@ The file name is the report date in `MM-DD-YYYY.csv` form. The script needs `pan
 It matches counties by FIPS code, then writes the result to the paths hard-coded in
 `update_usacounties_json` (`/usr/local/bin/www-scripts/usacounties.json` as input and
 `/var/www/html/map/usacounties.json` as output). Change those paths if you run it elsewhere.
-
-## Setting the Mapbox token
-
-The base map tiles come from Mapbox. In `map-usa.js`, replace the placeholder:
-
-```js
-const MAPBOX_TOKEN = 'YOUR_MAPBOX_TOKEN';
-```
-
-with your own public Mapbox token. Do not commit a real token to the repository.

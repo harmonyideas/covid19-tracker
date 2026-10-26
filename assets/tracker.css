@@ -1,0 +1,518 @@
+/* Shared styles for the NJ and USA county maps. */
+
+:root {
+  --mist: #eef2f2;
+  --surface: #ffffff;
+  --ink: #14262e;
+  --muted: #56676f;
+  --line: #d3dcde;
+  --water: #1d6a85;
+  --water-soft: #dcebf0;
+
+  --lvl-0: #cbe6dd; /* Very low */
+  --lvl-1: #86c2ae; /* Low */
+  --lvl-2: #edb841; /* Moderate */
+  --lvl-3: #d9662b; /* High */
+  --lvl-4: #962140; /* Very high */
+  --lvl-none: #dde3e4;
+
+  --font: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --step--1: 0.8125rem;
+  --step-0: 0.9375rem;
+  --step-1: 1.125rem;
+  --step-2: 1.5rem;
+  --step-3: 2.125rem;
+  --panel-width: 400px;
+  --stage: clamp(560px, calc(100vh - 40px), 920px);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --mist: #0e1a20;
+    --surface: #14242c;
+    --ink: #e3ecee;
+    --muted: #93a5ac;
+    --line: #273a43;
+    --water: #6cc0da;
+    --water-soft: #1b3644;
+    --lvl-none: #2b3c44;
+    color-scheme: dark;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html, body { margin: 0; }
+
+body {
+  background: var(--mist);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: var(--step-0);
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--water); }
+
+:focus-visible {
+  outline: 3px solid var(--water);
+  outline-offset: 2px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ---------- Page frame ---------- */
+
+.page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--panel-width);
+  grid-template-rows: auto auto var(--stage) auto;
+  grid-template-areas:
+    "head  head"
+    "band  band"
+    "map   panel"
+    "foot  foot";
+  min-height: 100vh;
+}
+
+.head {
+  grid-area: head;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px 32px;
+  padding: 28px 32px 20px;
+}
+
+.head h1 {
+  margin: 0;
+  font-size: var(--step-3);
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  max-width: 22ch;
+}
+
+.head .lede {
+  margin: 8px 0 0;
+  color: var(--muted);
+  max-width: 62ch;
+}
+
+.switch {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 3px;
+  background: var(--surface);
+}
+
+.switch a {
+  padding: 6px 14px;
+  border-radius: 999px;
+  color: var(--ink);
+  text-decoration: none;
+  font-size: var(--step--1);
+  font-weight: 600;
+}
+
+.switch a[aria-current="page"] {
+  background: var(--ink);
+  color: var(--surface);
+}
+
+/* ---------- Summary band (the level bar) ---------- */
+
+.band {
+  grid-area: band;
+  padding: 0 32px 24px;
+}
+
+.band-title {
+  margin: 0 0 10px;
+  font-size: var(--step-0);
+  font-weight: 600;
+}
+
+.levelbar {
+  display: flex;
+  height: 44px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--lvl-none);
+}
+
+.levelbar .seg {
+  height: 100%;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  border-right: 2px solid var(--mist);
+  cursor: pointer;
+  position: relative;
+  transition: filter 120ms;
+}
+
+.levelbar .seg:last-child { border-right: 0; }
+.levelbar .seg:hover,
+.levelbar .seg.is-active { filter: brightness(0.86) saturate(1.1); }
+
+.levelbar .seg span {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  padding-left: 8px;
+  font-size: var(--step--1);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  color: var(--seg-ink, #14262e);
+}
+
+.levelkey {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 22px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--step--1);
+  color: var(--muted);
+}
+
+.levelkey li { display: flex; align-items: center; gap: 7px; }
+.levelkey li.is-zero { opacity: 0.6; }
+.levelkey strong { color: var(--ink); font-weight: 600; }
+
+.swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex: none;
+}
+
+/* ---------- Map ---------- */
+
+.map-wrap {
+  grid-area: map;
+  position: relative;
+  min-height: 0;
+  border-top: 1px solid var(--line);
+}
+
+#map {
+  position: absolute;
+  inset: 0;
+  background: var(--mist);
+}
+
+.leaflet-container { font-family: var(--font); }
+
+.leaflet-tooltip.county-tip {
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  box-shadow: 0 4px 14px rgba(20, 38, 46, 0.18);
+  padding: 6px 10px;
+  font-size: var(--step--1);
+}
+
+.leaflet-tooltip.county-tip::before { display: none; }
+
+.county-tip b { display: block; font-size: var(--step-0); }
+
+.map-status {
+  position: absolute;
+  z-index: 500;
+  left: 16px;
+  bottom: 16px;
+  max-width: 340px;
+  margin: 0;
+  padding: 10px 14px;
+  background: var(--surface);
+  border-left: 4px solid var(--lvl-3);
+  font-size: var(--step--1);
+}
+
+.map-status:empty { display: none; }
+
+/* ---------- Side panel ---------- */
+
+.panel {
+  grid-area: panel;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.panel-section {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--line);
+}
+
+.field-label {
+  display: block;
+  font-size: var(--step--1);
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.input,
+.select {
+  width: 100%;
+  font: inherit;
+  color: var(--ink);
+  background: var(--mist);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 9px 12px;
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.controls .wide { grid-column: 1 / -1; }
+
+.toggle {
+  display: inline-flex;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.toggle button {
+  flex: 1;
+  font: inherit;
+  font-size: var(--step--1);
+  font-weight: 600;
+  padding: 9px 8px;
+  border: 0;
+  background: var(--mist);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.toggle button[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--surface);
+}
+
+/* Detail block */
+
+.detail h2 {
+  margin: 0;
+  font-size: var(--step-2);
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.detail .sub {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: var(--step--1);
+}
+
+.level-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: var(--step-1);
+  font-weight: 700;
+  background: var(--badge-bg, var(--lvl-none));
+  color: var(--badge-ink, var(--ink));
+}
+
+.trend-line {
+  margin: 8px 0 0;
+  font-size: var(--step-0);
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 16px;
+  margin: 18px 0 0;
+}
+
+.facts div { min-width: 0; }
+.facts dt { font-size: var(--step--1); color: var(--muted); }
+.facts dd { margin: 0; font-size: var(--step-1); font-weight: 600; }
+
+.history { margin-top: 18px; }
+
+.history-title {
+  margin: 0 0 8px;
+  font-size: var(--step--1);
+  font-weight: 600;
+}
+
+.history svg { display: block; width: 100%; height: auto; overflow: visible; }
+.history .axis { fill: var(--muted); font-size: 11px; }
+.history .gridline { stroke: var(--line); stroke-width: 1; }
+
+.note {
+  margin: 14px 0 0;
+  font-size: var(--step--1);
+  color: var(--muted);
+}
+
+/* County list */
+
+.list-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 16px 24px 8px;
+}
+
+.list-head h2 {
+  margin: 0;
+  font-size: var(--step-0);
+  font-weight: 600;
+}
+
+.sort {
+  font: inherit;
+  font-size: var(--step--1);
+  color: var(--water);
+  background: none;
+  border: 0;
+  padding: 2px 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.county-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 12px 16px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.county-list button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-radius: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.county-list button:hover { background: var(--mist); }
+.county-list button[aria-current="true"] { background: var(--water-soft); }
+
+.county-list .name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.county-list .name small { display: block; font-weight: 400; color: var(--muted); font-size: var(--step--1); }
+
+.chip {
+  display: inline-block;
+  min-width: 84px;
+  text-align: center;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: var(--step--1);
+  font-weight: 600;
+  background: var(--chip-bg, var(--lvl-none));
+  color: var(--chip-ink, var(--ink));
+}
+
+.spark { display: block; }
+
+.metric-bar {
+  width: 88px;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--mist);
+  overflow: hidden;
+}
+
+.metric-bar i { display: block; height: 100%; background: var(--water); }
+
+.value { font-weight: 600; text-align: right; min-width: 80px; }
+
+.empty {
+  padding: 16px 12px;
+  color: var(--muted);
+}
+
+/* ---------- Footer ---------- */
+
+.foot {
+  grid-area: foot;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px 40px;
+  padding: 28px 32px 36px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: var(--step--1);
+}
+
+.foot h2 {
+  margin: 0 0 4px;
+  font-size: var(--step--1);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.foot p { margin: 0; max-width: 60ch; }
+
+/* ---------- Small screens ---------- */
+
+@media (max-width: 960px) {
+  .page {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto;
+    grid-template-areas: "head" "band" "map" "panel" "foot";
+  }
+  .head, .band { padding-left: 16px; padding-right: 16px; }
+  .head h1 { font-size: var(--step-2); }
+  .map-wrap { height: 62vh; }
+  .levelbar { height: 28px; }
+  .levelbar .seg span { display: none; }
+  .panel { border-left: 0; overflow: visible; }
+  .panel-section { padding: 18px 16px; }
+  .list-head { padding: 16px 16px 8px; }
+  .county-list { padding: 0 4px 16px; overflow: visible; }
+  .foot { padding: 24px 16px 32px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}

@@ -1,209 +1,447 @@
-// initialize the selection box
-// initialize the map
-var geojson;
-var lastClickedLayer;
+// US county map of final COVID-19 case and death totals (through March 2023).
+// Reads usacounties.json, built by import-csvdata-usa.py.
+(function() {
+    "use strict";
 
-// Set boundry for state view
-//bounds = new L.LatLngBounds(new L.LatLng(41.58, -75.800), new L.LatLng(38.805, -73.263));
-var map = L.map('map', {
-    // maxBounds: bounds,
-    //maxBoundsViscosity: 1.0
-}).setView([38.2700, -100.8603], 4);
+    var esc = Tracker.escapeHtml;
+    var fmt = Tracker.formatNumber;
+    var num = Tracker.toNumber;
 
-// Set boundry limits on panning the map
-//map.on('drag', function() {
-//    map.panInsideBounds(bounds, {
-//       animate: false
-//  });
-//});
-
-// load a tile layer
-// Set your own Mapbox public token here. Do not commit a real token.
-const MAPBOX_TOKEN = 'YOUR_MAPBOX_TOKEN';
-L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=' + MAPBOX_TOKEN, {
-    minZoom: 4,
-    maxZoom: 8,
-    attribution: 'Map data © <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, ' +
-        '<a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, ' +
-        'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
-    id: 'mapbox/light-v9',
-    tileSize: 512,
-    zoomOffset: -1
-}).addTo(map);
-
-// Shows a short message in the page when a data file cannot be loaded.
-function showLoadError() {
-    var status = document.getElementById("status");
-    if (status) {
-        status.textContent = "Sorry, the county data failed to load. Please try again later.";
-    }
-}
-
-// load GeoJSON from an external file (fetched once, then reused for the table and the map)
-$.getJSON("usacounties.json", function(data) {
-    buildDataTable(data);
-    // add GeoJSON layer to the map once the file is loaded
-    geojson = L.geoJson(data, {
-        style: style,
-        onEachFeature: onEachFeature
-    }).addTo(map);
-}).catch(function(err) {
-    console.error("Failed to load usacounties.json", err);
-    showLoadError();
-});
-// control that shows state info on hover
-var info = L.control();
-info.update = function(props) {
-    document.getElementById("infoName").innerHTML = '<b>' + props.COUNTY_STATE_NAME + '</b>';
-    document.getElementById("infoCovid19Cases").innerHTML = '<b>' + props.COVID19_CASES + '</b>';
-    document.getElementById("infoCovid19Deaths").innerHTML = '<b>' + props.COVID19_DEATHS + '</b>';
-};
-
-function buildDataTable(data) {
-    // COUNTY_STATE_NAME is not unique (e.g. "Fairfax, Virginia" is county 51059 and
-    // independent city 51600). In the table only, a name that occurs more than once
-    // gets its GEOID appended so each row is distinguishable. The map keys stay GEOID-based.
-    var nameCounts = Object.create(null);
-    data.features.forEach(function(f) {
-        var name = f.properties.COUNTY_STATE_NAME;
-        nameCounts[name] = (nameCounts[name] || 0) + 1;
-    });
-
-    var table = $('#datatable1').DataTable({
-        "data": data.features,
-        "deferRender": true,
-        "columns": [{
-                data: "properties.COUNTY_STATE_NAME",
-                render: function(name, type, row) {
-                    if (type !== 'display' || nameCounts[name] < 2) {
-                        return name;
-                    }
-                    return name + ' (' + row.properties.GEOID + ')';
-                }
-            },
-            {
-                data: "properties.COVID19_CASES"
-            },
-            {
-                data: "properties.COVID19_DEATHS"
-            },
-        ]
-    });
-    $('#datatable1 tbody').on('click', 'tr', function() {
-        var rowdata = table.row(this).data();
-        layerSelect(rowdata.properties.GEOID);
-    });
-};
-
-
-function buildLegend() {
-    var legendinfo_div = document.getElementById("legendinfo");
-    var grades = [0, 1000, 5000, 10000, 25000, 50000, 100000, 250000, 500000];
-    var labels = ['<strong>Confirmed COVID-19 Cases</strong>'];
-    var from;
-    var to;
-
-    // loop through our density intervals and generate a label with a colored square for each interval
-    for (var i = 0; i < grades.length; i++) {
-        from = grades[i];
-        to = grades[i + 1] - 1;
-
-        legendinfo_div.innerHTML +=
-            '<i style="background:' + getColor(grades[i] + 1) + '"></i> ' +
-            grades[i] + (grades[i + 1] ? '&ndash;' + grades[i + 1] + '<br>' : '+');
-
-        labels.push(
-            '<i style="background:' + getColor(from + 1) + '"></i> ' +
-            from + (to ? '&ndash;' + to : '+'));
-
-    }
-    legendinfo_div.innerHTML = labels.join('<br>');
-}
-
-// Color by cumulative confirmed COVID-19 cases per county. The previous breaks
-// (100-1000) were copied from population density, so nearly every county fell
-// into the darkest class. The breaks below are the lower bounds of each class,
-// set from the distribution in usacounties.json (3,217 counties, median about
-// 8,000 cases, 90th percentile about 64,000, max about 3.7 million).
-// Class counts at these breaks: <1k 256, 1k-5k 879, 5k-10k 682, 10k-25k 698,
-// 25k-50k 299, 50k-100k 186, 100k-250k 147, 250k-500k 48, 500k+ 22.
-function getColor(cases) {
-    return cases >= 500000 ? '#800026' :
-        cases >= 250000 ? '#BD0026' :
-        cases >= 100000 ? '#E31A1C' :
-        cases >= 50000 ? '#FC4E2A' :
-        cases >= 25000 ? '#FD8D3C' :
-        cases >= 10000 ? '#FEB24C' :
-        cases >= 5000 ? '#FED976' :
-        cases >= 1000 ? '#FFEDA0' :
-        '#FFFFCC';
-}
-
-function style(feature) {
-    return {
-        weight: 2,
-        opacity: 1,
-        color: 'white',
-        dashArray: '3',
-        fillOpacity: 0.7,
-        fillColor: getColor(feature.properties.COVID19_CASES)
+    // Sequential ramp, light to dark. Lower bounds of each class per metric.
+    var RAMP = ["#e3eef1", "#c4dde5", "#9fc7d5", "#77aec3", "#5292b0", "#36779c", "#255d87", "#1d436d", "#172c52"];
+    var RAMP_INK = ["#14262e", "#14262e", "#14262e", "#14262e", "#ffffff", "#ffffff", "#ffffff", "#ffffff", "#ffffff"];
+    var METRICS = {
+        cases: {
+            key: "COVID19_CASES",
+            label: "cases",
+            title: "Most cases",
+            breaks: [0, 1000, 5000, 10000, 25000, 50000, 100000, 250000, 500000]
+        },
+        deaths: {
+            key: "COVID19_DEATHS",
+            label: "deaths",
+            title: "Most deaths",
+            breaks: [0, 10, 50, 100, 250, 500, 1000, 2500, 5000]
+        }
     };
-}
+    var LIST_LIMIT = window.matchMedia && window.matchMedia("(max-width: 960px)").matches ? 15 : 50;
 
-function highlightFeature(e) {
-    var layer = e.target;
-    layer.setStyle({
-        weight: 3,
-        color: '#404040',
-        dashArray: '',
-        fillOpacity: 0.7
+    var state = {
+        counties: [],      // {geoid, name, state, cases, deaths, layer}
+        byGeoid: {},
+        states: {},        // state name -> {cases, deaths, count, bounds}
+        metric: "cases",
+        stateFilter: "",
+        selected: null,    // GEOID
+        filter: ""
+    };
+
+    function cssVar(name) {
+        return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    }
+
+    function metric() {
+        return METRICS[state.metric];
+    }
+
+    function value(c) {
+        return state.metric === "cases" ? c.cases : c.deaths;
+    }
+
+    // Zero cases means the county reported as part of a larger district.
+    function reported(c) {
+        return c.cases > 0;
+    }
+
+    function classIndex(v) {
+        var breaks = metric().breaks;
+        for (var i = breaks.length - 1; i >= 0; i--) {
+            if (v >= breaks[i]) {
+                return i;
+            }
+        }
+        return 0;
+    }
+
+    function colorFor(c) {
+        return reported(c) ? RAMP[classIndex(value(c))] : (cssVar("--lvl-none") || "#dde3e4");
+    }
+
+    function shortNumber(n) {
+        if (n >= 1e6) { return (n / 1e6).toFixed(n % 1e6 ? 1 : 0) + "M"; }
+        if (n >= 1e3) { return (n / 1e3).toFixed(n % 1e3 ? 1 : 0).replace(/\.0$/, "") + "k"; }
+        return String(n);
+    }
+
+    function rangeLabel(i) {
+        var breaks = metric().breaks;
+        if (i === breaks.length - 1) {
+            return shortNumber(breaks[i]) + "+";
+        }
+        return (i === 0 ? "Under " : shortNumber(breaks[i]) + " to ") + shortNumber(breaks[i + 1]);
+    }
+
+    function deathsPer100(cases, deaths) {
+        return cases > 0 ? (deaths / cases * 100).toFixed(2) : "–";
+    }
+
+    function inScope(c) {
+        return !state.stateFilter || c.state === state.stateFilter;
+    }
+
+    // ---------- Summary band ----------
+
+    function renderBand() {
+        var bar = document.getElementById("levelbar");
+        var key = document.getElementById("levelkey");
+        var scoped = state.counties.filter(inScope);
+        var counts = RAMP.map(function() { return 0; });
+        var missing = 0;
+        scoped.forEach(function(c) {
+            if (reported(c)) {
+                counts[classIndex(value(c))]++;
+            } else {
+                missing++;
+            }
+        });
+        var total = scoped.length || 1;
+
+        document.getElementById("band-title").textContent =
+            (state.stateFilter ? state.stateFilter + " counties" : "Counties") + " by total reported " + metric().label;
+
+        var segs = counts.map(function(n, i) {
+            if (!n) {
+                return "";
+            }
+            var share = n / total * 100;
+            var label = share >= 7 ? '<span style="--seg-ink:' + RAMP_INK[i] + '">' + rangeLabel(i) + '</span>' : "";
+            return '<div class="seg" style="width:' + share.toFixed(2) + '%;background:' + RAMP[i] + ';cursor:default" title="' +
+                rangeLabel(i) + ': ' + n + ' counties">' + label + '</div>';
+        });
+        if (missing) {
+            segs.push('<div class="seg" style="width:' + (missing / total * 100).toFixed(2) + '%;background:' +
+                cssVar("--lvl-none") + ';cursor:default" title="Not reported: ' + missing + ' counties"></div>');
+        }
+        bar.innerHTML = segs.join("");
+
+        key.innerHTML = counts.map(function(n, i) {
+            return '<li' + (n ? "" : ' class="is-zero"') + '><span class="swatch" style="background:' + RAMP[i] + '"></span>' +
+                '<span><strong>' + rangeLabel(i) + '</strong> ' + n + '</span></li>';
+        }).join("") + (missing ? '<li><span class="swatch" style="background:' + cssVar("--lvl-none") +
+            '"></span><span><strong>Not reported</strong> ' + missing + '</span></li>' : "");
+    }
+
+    // ---------- Detail ----------
+
+    function rank(c, pool) {
+        var v = value(c);
+        var higher = pool.filter(function(o) { return value(o) > v; }).length;
+        return higher + 1;
+    }
+
+    function renderDetail() {
+        var el = document.getElementById("detail");
+        var c = state.selected && state.byGeoid[state.selected];
+
+        if (c) {
+            var sameState = state.counties.filter(function(o) { return o.state === c.state && reported(o); });
+            var nation = state.counties.filter(reported);
+            var label = metric().label;
+            el.innerHTML = '<h2>' + esc(c.name) + '</h2>' +
+                '<p class="sub">' + esc(c.state) + '</p>' +
+                (reported(c) ?
+                    '<dl class="facts">' +
+                    '<div><dt>Cases</dt><dd>' + fmt(c.cases) + '</dd></div>' +
+                    '<div><dt>Deaths</dt><dd>' + fmt(c.deaths) + '</dd></div>' +
+                    '<div><dt>Deaths per 100 cases</dt><dd>' + deathsPer100(c.cases, c.deaths) + '</dd></div>' +
+                    '<div><dt>Rank by ' + label + '</dt><dd>' + rank(c, sameState) + ' of ' + sameState.length + ' in state</dd></div>' +
+                    '</dl>' +
+                    '<p class="note">' + ordinal(rank(c, nation)) + ' of ' + fmt(nation.length) + ' US counties by ' + label + '.</p>'
+                    : '<p class="trend-line">Not reported separately. This county\'s cases were counted with a larger health district.</p>') +
+                '<p class="note"><button class="sort" type="button" data-action="clear">Back to ' +
+                esc(state.stateFilter || "all states") + '</button></p>';
+            return;
+        }
+
+        var scoped = state.counties.filter(inScope);
+        var cases = scoped.reduce(function(s, o) { return s + o.cases; }, 0);
+        var deaths = scoped.reduce(function(s, o) { return s + o.deaths; }, 0);
+        el.innerHTML = '<h2>' + esc(state.stateFilter || "United States") + '</h2>' +
+            '<p class="sub">' + fmt(scoped.length) + ' counties, final totals through March 2023</p>' +
+            '<dl class="facts">' +
+            '<div><dt>Cases</dt><dd>' + fmt(cases) + '</dd></div>' +
+            '<div><dt>Deaths</dt><dd>' + fmt(deaths) + '</dd></div>' +
+            '<div><dt>Deaths per 100 cases</dt><dd>' + deathsPer100(cases, deaths) + '</dd></div>' +
+            '</dl>' +
+            '<p class="note">Select a county on the map or in the list for its numbers.</p>';
+    }
+
+    function ordinal(n) {
+        var s = ["th", "st", "nd", "rd"], v = n % 100;
+        return fmt(n) + (s[(v - 20) % 10] || s[v] || s[0]);
+    }
+
+    // ---------- List ----------
+
+    function renderList() {
+        var list = document.getElementById("list");
+        var query = state.filter.trim().toLowerCase();
+        var rows = state.counties.filter(function(c) {
+            return inScope(c) && (!query || c.name.toLowerCase().indexOf(query) !== -1);
+        });
+        rows.sort(function(a, b) { return value(b) - value(a) || a.name.localeCompare(b.name); });
+
+        var title = query ? "Matching counties" : metric().title + (state.stateFilter ? " in " + state.stateFilter : "");
+        document.getElementById("list-title").textContent = title;
+
+        if (!rows.length) {
+            list.innerHTML = '<li class="empty">No county' + (state.stateFilter ? " in " + esc(state.stateFilter) : "") +
+                ' matches “' + esc(state.filter) + '”.</li>';
+            return;
+        }
+
+        var max = value(rows[0]) || 1;
+        list.innerHTML = rows.slice(0, LIST_LIMIT).map(function(c) {
+            var current = c.geoid === state.selected ? ' aria-current="true"' : "";
+            var v = value(c);
+            return '<li><button type="button" data-geoid="' + esc(c.geoid) + '"' + current + '>' +
+                '<span class="name">' + esc(c.name) + (state.stateFilter ? "" : '<small>' + esc(c.state) + '</small>') + '</span>' +
+                '<span class="metric-bar" aria-hidden="true"><i style="width:' + (v / max * 100).toFixed(1) + '%"></i></span>' +
+                '<span class="value">' + (reported(c) ? fmt(v) : "Not reported") + '</span>' +
+                '</button></li>';
+        }).join("") + (rows.length > LIST_LIMIT ? '<li class="empty">Showing the top ' + LIST_LIMIT + ' of ' +
+            fmt(rows.length) + '. Search or pick a state to narrow the list.</li>' : "");
+    }
+
+    // ---------- Map ----------
+
+    var map = L.map("map", {
+        preferCanvas: true,
+        minZoom: 2,
+        zoomSnap: 0.25,
+        worldCopyJump: true
+    }).setView([38.3, -96.5], 4);
+    Tracker.addBasemap(map);
+    var lower48 = L.latLngBounds([24.4, -125], [49.4, -66.9]);
+    var geojson;
+
+    function featureStyle(feature) {
+        var c = state.byGeoid[feature.properties.GEOID];
+        var selected = c && c.geoid === state.selected;
+        return {
+            fillColor: c ? colorFor(c) : cssVar("--lvl-none"),
+            fillOpacity: 0.88,
+            color: cssVar(selected ? "--ink" : "--surface"),
+            weight: selected ? 2.5 : 0.4,
+            opacity: 1
+        };
+    }
+
+    function restyle() {
+        if (geojson) {
+            geojson.setStyle(featureStyle);
+            var c = state.selected && state.byGeoid[state.selected];
+            if (c && c.layer) {
+                c.layer.bringToFront();
+            }
+        }
+    }
+
+    function updateHash() {
+        var parts = [];
+        if (state.stateFilter) { parts.push("state=" + encodeURIComponent(state.stateFilter)); }
+        if (state.selected) { parts.push("county=" + encodeURIComponent(state.selected)); }
+        if (state.metric !== "cases") { parts.push("show=" + state.metric); }
+        var hash = parts.length ? "#" + parts.join("&") : "";
+        if (location.hash !== hash) {
+            history.replaceState(null, "", location.pathname + location.search + hash);
+        }
+    }
+
+    function renderAll() {
+        renderBand();
+        renderDetail();
+        renderList();
+        restyle();
+        updateHash();
+    }
+
+    function zoomToScope() {
+        if (state.stateFilter && state.states[state.stateFilter]) {
+            map.flyToBounds(state.states[state.stateFilter].bounds, { padding: [30, 30], duration: 0.6 });
+        } else {
+            map.flyToBounds(lower48, { padding: [10, 10], duration: 0.6 });
+        }
+    }
+
+    function select(geoid, options) {
+        options = options || {};
+        state.selected = geoid && state.byGeoid[geoid] ? geoid : null;
+        renderAll();
+        if (options.zoom === false) {
+            return;
+        }
+        var c = state.selected && state.byGeoid[state.selected];
+        if (c && c.layer) {
+            map.flyToBounds(c.layer.getBounds(), { padding: [80, 80], maxZoom: 7, duration: 0.6 });
+        } else {
+            zoomToScope();
+        }
+    }
+
+    function setState(name, options) {
+        state.stateFilter = name && state.states[name] ? name : "";
+        document.getElementById("state").value = state.stateFilter;
+        var c = state.selected && state.byGeoid[state.selected];
+        if (c && state.stateFilter && c.state !== state.stateFilter) {
+            state.selected = null;
+        }
+        renderAll();
+        if (!options || options.zoom !== false) {
+            zoomToScope();
+        }
+    }
+
+    function setMetric(name) {
+        state.metric = METRICS[name] ? name : "cases";
+        document.querySelectorAll("[data-metric]").forEach(function(b) {
+            b.setAttribute("aria-pressed", String(b.getAttribute("data-metric") === state.metric));
+        });
+        document.getElementById("map").setAttribute("aria-label",
+            "Map of US counties colored by total COVID-19 " + metric().label);
+        renderAll();
+    }
+
+    // ---------- Events ----------
+
+    document.addEventListener("click", function(e) {
+        var target = e.target.closest("[data-geoid], [data-action='clear'], [data-metric]");
+        if (!target) {
+            return;
+        }
+        if (target.hasAttribute("data-metric")) {
+            setMetric(target.getAttribute("data-metric"));
+        } else if (target.getAttribute("data-action") === "clear") {
+            select(null);
+        } else {
+            select(target.getAttribute("data-geoid"));
+        }
     });
-    info.update(layer.feature.properties);
 
-    if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
-        layer.bringToFront();
-    }
-}
-
-function resetHighlight(e) {
-    geojson.resetStyle(e.target);
-    //  info.update(layer.feature.properties);
-}
-
-function zoomToFeature(e) {
-    highlightFeature(e);
-    map.fitBounds(e.target.getBounds());
-}
-
-function onEachFeature(feature, layer) {
-    // Key by GEOID: COUNTY_STATE_NAME is not unique (e.g. Fairfax, Virginia is
-    // both county 51059 and independent city 51600).
-    layer._leaflet_id = feature.properties.GEOID;
-    layer.on({
-        mouseover: highlightFeature,
-        mouseout: resetHighlight,
-        click: zoomToFeature,
+    document.getElementById("state").addEventListener("change", function(e) {
+        setState(e.target.value);
     });
-}
 
-// Fire click event and zoom to polygon  
-function layerSelect(geoid) {
-    if (lastClickedLayer) {
-        geojson.resetStyle(lastClickedLayer);
+    var search = document.getElementById("search");
+    search.addEventListener("input", function() {
+        state.filter = search.value;
+        renderList();
+    });
+    search.addEventListener("keydown", function(e) {
+        if (e.key === "Enter") {
+            var first = document.querySelector("#list [data-geoid]");
+            if (first) {
+                select(first.getAttribute("data-geoid"));
+            }
+        }
+    });
+
+    if (window.matchMedia) {
+        var dark = window.matchMedia("(prefers-color-scheme: dark)");
+        if (dark.addEventListener) {
+            dark.addEventListener("change", renderAll);
+        }
     }
-    var layer = map._layers[geoid];
-    if (!layer) {
-        return;
+
+    // ---------- Load ----------
+
+    function readHash() {
+        var out = {};
+        location.hash.replace(/^#/, "").split("&").forEach(function(pair) {
+            var kv = pair.split("=");
+            if (kv[0]) {
+                out[kv[0]] = decodeURIComponent(kv[1] || "");
+            }
+        });
+        return out;
     }
-    layer.fire('click'); // 'clicks' on county row from the table
-    lastClickedLayer = layer;
-}
 
+    fetch("usacounties.json")
+        .then(function(response) {
+            if (!response.ok) {
+                throw new Error("HTTP " + response.status);
+            }
+            return response.json();
+        })
+        .then(function(data) {
+            data.features.forEach(function(f) {
+                var p = f.properties;
+                var parts = String(p.COUNTY_STATE_NAME || "").split(", ");
+                var stateName = parts.length > 1 ? parts.pop() : "";
+                var c = {
+                    geoid: String(p.GEOID),
+                    name: parts.join(", "),
+                    state: stateName,
+                    cases: num(p.COVID19_CASES),
+                    deaths: num(p.COVID19_DEATHS),
+                    layer: null
+                };
+                state.counties.push(c);
+                state.byGeoid[c.geoid] = c;
+            });
 
-// Setup Custom Controls
-buildLegend();
+            // Names that occur twice in one state (e.g. Fairfax county and city, Virginia).
+            var seen = {};
+            state.counties.forEach(function(c) { var k = c.name + "|" + c.state; seen[k] = (seen[k] || 0) + 1; });
+            state.counties.forEach(function(c) {
+                if (seen[c.name + "|" + c.state] > 1) {
+                    c.name += " (" + c.geoid + ")";
+                }
+            });
 
-//Setup listener events 
-$('#select-box1').change(function() {
-    layerSelect(this.value);
-});
+            geojson = L.geoJSON(data, {
+                style: featureStyle,
+                onEachFeature: function(feature, layer) {
+                    var c = state.byGeoid[String(feature.properties.GEOID)];
+                    c.layer = layer;
+                    var s = state.states[c.state] || (state.states[c.state] = { bounds: L.latLngBounds([]) });
+                    if (feature.geometry) {
+                        s.bounds.extend(layer.getBounds());
+                    }
+                    layer.bindTooltip(function() {
+                        return '<b>' + esc(c.name) + ', ' + esc(c.state) + '</b>' +
+                            (reported(c) ? fmt(value(c)) + " " + metric().label : "Not reported");
+                    }, { sticky: true, direction: "top", offset: [0, -8], className: "county-tip" });
+                    layer.on({
+                        mouseover: function() {
+                            layer.setStyle({ weight: 2, color: cssVar("--ink") });
+                        },
+                        mouseout: restyle,
+                        click: function() { select(c.geoid === state.selected ? null : c.geoid); }
+                    });
+                }
+            }).addTo(map);
+
+            var select_ = document.getElementById("state");
+            Object.keys(state.states).sort().forEach(function(name) {
+                var opt = document.createElement("option");
+                opt.value = name;
+                opt.textContent = name;
+                select_.appendChild(opt);
+            });
+
+            var h = readHash();
+            if (h.show) { state.metric = METRICS[h.show] ? h.show : "cases"; }
+            setMetric(state.metric);
+            setState(h.state || "", { zoom: false });
+            if (h.county && state.byGeoid[h.county]) {
+                select(h.county);
+            } else {
+                map.fitBounds(state.stateFilter ? state.states[state.stateFilter].bounds : lower48, { padding: [10, 10] });
+            }
+        })
+        .catch(function(err) {
+            console.error("Failed to load usacounties.json", err);
+            Tracker.showStatus("The county data didn't load. Check that usacounties.json is next to this page, then reload.");
+        });
+})();
